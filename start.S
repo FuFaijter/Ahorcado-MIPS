@@ -11,112 +11,115 @@
  * option) any later version.
  *
  */
-
 #include "asm.h"
 .data
 memoria:
-	# --PALABRAS SECRETAS-- 
-	palabra1: .asciiz "computadora"
-	palabra2: .asciiz "mips"
-	palabra3: .asciiz "aprobar"
-	palabra4: .asciiz "gorila"
-	palabra5: .asciiz "isomorfo"
+	palabra0:		.asciiz	"computadora"
+	palabra1:		.asciiz	"aprobar"
+	palabra2:		.asciiz	"dificil"
+	palabra3:		.asciiz	"inimputabilidad"
+	palabra4:		.asciiz "mips"
+	palabra5:		.asciiz "ahorcado"
+	palabra6:		.asciiz "ubuntu"
+	palabra7:		.asciiz "fidebian"
+	palabra8:		.asciiz	"gnu"
+	palabra9:		.asciiz	"informatica"
+	palabra10:		.asciiz	"pseudofacil"
+	palabra11:		.asciiz "peliculas"
+	palabra12:		.asciiz "julioprofe"
 
-	PALABRAS: .word palabra1, palabra2, palabra3, palabra4, palabra5
-	cantidad_palabras: .byte 4
-	puntero_palabras: .byte 0
-	jugadas: .byte 0
+	PALABRAS:		.word	palabra0, palabra1, palabra2, palabra3, palabra4, palabra5, palabra6, palabra7, palabra8, palabra9, palabra10, palabra11, palabra12
 
-	mensaje:  .asciiz "Bienvenido al Juego del Ahorcado!\n"
-	ahorcado: .asciiz " AHORCADO"
-	jugar_otra: .asciiz "Jugas otra? (y/n): "
-	buffer: .space 20
-	errores: .byte 0
+	CANT_PALABRAS:	.word	13
 
+	BUFFER:	.space	32
 
-.text
+	BIENVENIDA:	.asciiz "Bienvenido al Juego del AHORCADO!!\n\r"
+	YES:		.asciiz "Si! "
+	NO:		.asciiz "No! "
+	ADIVINA:	.asciiz "Adivina:  "
+	AHORCADO:	.asciiz "|| "
+	PETICION_LETRA: .asciiz	"Ingresa una letra: \n\r"
+	FORFEIT:	.asciiz "LOOOOOSER "
+	RONDA_FIN: .asciiz "Bien!\n\r"
+	NO_ADIVINA:	.asciiz "PERDISTE JAJAJAJA\n\r"
+	PALABRA_POSTA:	.asciiz "\nLa palabra era: \n\r"
+	PUNTO:		.asciiz ".\n\r"
+	JUGAR_NUEVO:	.asciiz "Jugas otra vez (y/n)?\n\r"
+	SALTO_LINEA:		.asciiz "\n"
+	RETORNO_LINEA: .asciiz "\r"
+	DESPEDIDA: .asciiz "Tan temprano?"
+
+	.text
 LEAF(_start)
 	
-	.set	mips2
-	.set	reorder
+	.set mips2
+	.set reorder
 
-	/* Disable interrupts */
+/* Disable interrupts */
 	mtc0	zero, CP0_STATUS
 
-        /* Disable watch exception. */
-        mtc0    zero, CP0_WATCHLO
-        mtc0    zero, CP0_WATCHHI
+/* Disable watch exception. */
+	mtc0    zero, CP0_WATCHLO
+	mtc0    zero, CP0_WATCHHI
 
-	/* disable kernel mode cache */
+/* disable kernel mode cache */
 	mfc0	t0, CP0_CONFIG
 	and	t0, ~0x7
 	ori	t0, 0x2
 	mtc0	t0, CP0_CONFIG
 
-	/* set up stack */
+/* set up stack */
 	li	sp, 0xa0000000 + RAMSIZE - 16
 
-
-	# Inicio del programa principal
-	#MOSTRAR MENSAJE BIENVENIDA ----- OK
-	#ELEGIR PALABRA RANDOM ----- OK
-	#COMPLETAR CON - SEGUN CANTIDAD DE CARACTERES DE PALABRA ELEGIDA ----- OK
-	#SETEAR RONDA DE JUEGO
-		#INGRESA CARACTER (GETC) -- OK
-		#SI CARACTER ESTA EN PALABRA LLENAR - CORRESPONDIENTES AL CARACTER (modificar buffer) (cantidad de letras distintas del string para control fin partida?)
-		#SI CARACTER NO ESTA EN PALABRA
-			#CONTADOR DE ERRORES ++
-			#INSERTAR LETRA CORRESPONDIENTE SEGUN INTENTO FALLIDO
-	#SI FINAL PARTIDA (CONTADOR ERRORES = 8) -> LIMPIA LINEA. "GAME OVER PECHO FRIO"
-	#(LETRAS ADIVINADAS) -> "HA GANADO!"
-	#MENSAJE CONTINUAR -- OK		
-
 main:
-
-	la	a0, mensaje #Muestra el mensaje de bienvenida
+	lw	s0, PALABRAS		# S0 = primera palabra
+	and	s1, s1, 0			# S1 = cantidad errores
+	and	s2, s2, 0			# S2 = cantidad de jugadas (hasta llegar a CANT_PALABRAS)
+	
+	#BIENVENIDA
+	la	a0, BIENVENIDA
 	jal	mostrar_mensaje
 	
-	# Sin exit
 _loop_juego:
-	la a0, PALABRAS 			#Cargo direccion de memoria de palabras
-	la a1, puntero_palabras
-	la a2, cantidad_palabras
-	la a3, jugadas
-	jal	elegir_palabra_random		#Obtiene siguiente palabra
-	lw s4, errores 	#guarda en s4 cantidad de errores 
-	move s0, v0			#Almacena la palabra en s0
-	move a0, s0			#Mueve la palabra como parametro
-	jal longitud
 	
-	move s1,v0 	#Guarda en s1 la longitud de la palabra
-	la a0, buffer 		#a0 = dir memoria buffer
-	move a1, s1			#a1 = longitud string
-	jal crear_guiones	#Crea guiones en el buffer
-	la s2, buffer 		#Almacena en s2 la dir de memoria del buffer con guiones
-	move a0, s2
-	jal mostrar_mensaje
-	#la s3, ahorcadomove a0, s3jal mostrar_mensaje
-	jal	ronda_juego			# Juega una ronda
+	beq	s2, 0, _primera_jugada		# Para no volver a obtener palabra
 	
-_seguir:
-	la	a0, jugar_otra			
-	jal	mostrar_mensaje				
-	jal	getc			
+	#ACA DESPLAZAMIENTO PARA NUEVA PALABRA
 
-	beq	v0, 121, _loop_juego		
-	bne	v0, 110, _seguir	
+_primera_jugada:
+	la a0, BIENVENIDA
+	jal mostrar_mensaje
+	move a0, s0
 	
-	#SE ROMPE TODO // ETERNAL LOOP
+	jal	jugar_partida			# Realiza jugada
+	
+	addi	s2, s2, 1			#Aumenta jugadas
+	
+	la	a0, PALABRA_POSTA		
+	jal	mostrar_mensaje			
+	move	a0, s0				# Muestra la palabra real
+	jal	mostrar_mensaje				
+	la	a0, SALTO_LINEA
+	jal	mostrar_mensaje			#Salto linea
+	
+_peticion_juego:
+	la	a0, JUGAR_NUEVO			
+	jal	mostrar_mensaje				
+	jal	getc
+	
+	beq	v0, 121, _loop_juego		# JUEGA DE NUEVO
+	bne	v0, 110, _peticion_juego	# NO PRESIONA NI 'N' NI 'Y'
+	
+    la  a0, DESPEDIDA           
+    jal mostrar_mensaje             
 	
 	
-salida:	
-	li	v0, 10
-	syscall
-	
-	# Fin del programa principal
+exit:	li	v0, 10
+		syscall
+
 
 END(_start)
-
 
 .text
 # Procedimiento putc: escribir un caracter en el serial (pantalla)
@@ -178,153 +181,198 @@ getc:
 
 	jr ra
 
-#Este procedimiento elige una palabra dentro de las guardadas en memoria aleatoriamente.
-elegir_palabra_random:
-		lw t0, 0(a0) #dir memoria PALABRAS
-		lw t1, 0(a1) #dir memoria puntero_palabras
-		lw t2, 0(a2) #cantidad palabras totales
-		lw t3, 0(a3)
-		add t4, t0, t1 #desplazamiento en PALABRAS
-		addi t1, t1, 0x04 #siguiente posicion de PALABRAS
-		addi t3, t3, 0x01 #Incremento cantidad jugadas
-		sw t1, 0(a1) #Actualizo
-		sw t3, 0(a3)
-		beq t3, t2, terminar_juego #Si la cantidad de jugadas es igual a la cantidad de palabras
-		lw v0, 0(t4) #retorno palabra
-		jr ra
-#Este procedimiento escribe tantos guiones en el buffer como letras en la palabra y los ubica en el buffer. Loop pensado de adelante
-#para atras.
-# a0 = dir buffer, a1 = longitud string (cantidad de guiones a poner)
-crear_guiones:
-	addi	sp, sp, -8			# 8 bytes
-	sw	a0, 0(sp)			#Guarda a0
-	sw	a1, 4(sp)			#Guarda a1
-	
-	add	a0, a0, a1			# a0 = dir de memoria del buffer + longitud
-	addi	t1, zero, 0x2D			# valor ascii de '-' en t1
-	#sb	zero,0(a0)			# primer byte en null
-_loop_guion:
-	beq	a1, 0, _loop_fin_guion	# Si a0 = 0
-	addi	a0, a0, -1			# decrenta la posicion del buffer
-	addi	a1, a1, -1			# decrementa longitud
-	sb	t1, 0(a0)			# guarda guion
-	j	_loop_guion
-_loop_fin_guion:
-	lw	a0, 0(sp)			# carga a0
-	lw	a1, 4(sp)			# carga a1
-	addi	sp, sp, 8			# devuelve los 8 bytes
-	jr	ra				
-
-#Aca empieza y continuan las rondas del juego
-ronda_juego:
-
-	jal getc #Obtiene la tecla presionada. Guardada en v0
-	move a0, s0 #a0 = palabra
-	move a1, v0 #a1 = caracter ingresado
-	jal busqueda_caracter #Busca el caracter
-	
-	bne v0, zero, _char_correcto #si el char esta
-	beq v0, zero, _letra_equivocada
-	
-	_char_correcto:
-		move a0, s2
-		move a2, s0
-		jal completar_correcto
-		move a0, s0
-		li a1, 45
-		jal busqueda_caracter
-		bne v0, zero, _fin_ronda_gano
-		j ronda_juego
-
-	_letra_equivocada:
-		
-		addi	s4, s4, 0x01			# suma cantidad de errores
-		beq	s4, 8, _fin_ronda_perdio	# COMPLETA AHORCAD CON O Y GAME OVER
-		
-		j	ronda_juego		# Guess again!
-	_fin_ronda_perdio:
-
-	_fin_ronda_gano:
-		la a0, ronda_ganada
-		jal mostrar_mensaje
-		jr ra
-
-#Busqueda caracter en la palabra
-busqueda_caracter:
-	addi	sp, sp, -4			# 4 bytes
-	sw	a0, 0(sp)			# guarda a0
-	
-	
-	and	v0, v0, zero			# v0 como boolean. 0 false 1 true. v0 = false
-	
-_loop_busqueda:
-	lb	t0, 0(a0)				# carga char del string
-	beq	t0, 0, _loop_busqueda_fin		# fin del string, termina de ciclar
-	beq	t0, a1, _char_encontrado			# char encontrado
-	addi	a0, a0, 0x01				# dir memoria + 1. Siguiente char
-	j	_loop_busqueda
-_char_encontrado:
-	addi	v0, zero, 0x01				# como fue encontrado v0 = 1
-_loop_busqueda_fin:
-	lw	a0, 0(sp)			# carga a0
-	addi	sp, sp, 0x04			# devuelve 4 bytes 
-	jr	ra				
-
-#Completa con el caracter correcto en el buffer.
-#a0 = buffer, a1 = char, a2 = palabra
-completar_correcto:
-
-	addi	sp, sp, -8			#4 bytes
+#Procedimiento para la obtencion de la longitud de un string
+longitud_string:
+	addi	sp, sp, -4		#4 bytes
 	sw	a0, 0(sp)			# Guarda a0
-	sw	a2, 4(sp)			# Guarda a1
 	
+	li	t0, 1 				#Valor 1
+	and	v0, v0, zero		# Iterador = 0
+_loop_longitud:
+	lb	t1, 0(a0)			# Obtiene el char del string //FALLA?	
+	beq	t1, zero, _loop_longitud_fin		# Si 00, termina
+	add	a0, a0, t0			# Desplazamiento en string
+	add	v0, v0, t0			# Iterador++
 	
-_loop_correcto:
-	lb	t0, 0(a2)				# Carga el char desde el string
-	beq	t0, 0, _loop_correcto_fin		#fin
-	bne	t0, a1, _char_no_esta		#si el char no pertenece al encontrado, lo saltea
-	sb	a1, 0(a0)				# corresponde por lo tanto se lo pone en el buffer (reemplaza el '-')
-	j _char_no_esta 	#incrementa (al no encontrarlo hace lo mismo)
-_char_no_esta:
-	addi	a0, a0, 1				#incrementa buffer
-	addi	a2, a2, 1				#incrementa posicion de la palabra
-	j	_loop_correcto
-_loop_correcto_fin:
-	
-	lw	a2, 4(sp)			# carga a1
-	lw	a0, 0(sp)			# carga a0
-	addi	sp, sp, 8			# 4 bytes
+	j _loop_longitud		
+
+_loop_longitud_fin:	
+	lw	a0, 0(sp)			#Carga a0
+	addi	sp, sp, 4		#4 bytes
 	jr	ra				
-	
-#Ultima ronda
-ultima_ronda:
 
-#Cantidad letras. a0 = string
-longitud:
+#Se desarrolla la partida a partir de la palabra obtenida
+jugar_partida:
 	
-	addi	sp, sp, -4 		#4 bytes
-	sw	a0, 0(sp)			# guardo a0
+	addi	sp, sp, -24			# 24 bytes
+	sw	ra, 0(sp)			# Guardo RA
+	sw	a0, 4(sp)			# Guardo a0
+	sw	a1, 8(sp)			# Guardo a1
+	sw	s0, 12(sp)			# Guardo s0
+	sw	s1, 16(sp)			# Guardo s1
+	sw	s2, 20(sp)			# Guardo s2
+
+	la a0, BIENVENIDA
+	jal mostrar_mensaje
+	
+	lw a0, 4(sp)
+	jal mostrar_mensaje
+							# LONGITUD
+	li v0, 8
+	move	s0, v0			# s0 = longitud string
+	move	s1, a0			# s1 = dir string
+	
+	#Completa guiones
+	la	a0, BUFFER			# Obtiene el buffer
+	move	a1, s0			
+	jal	completar_guiones			
+	
+_loop_ronda:
+	# ERRORES = 8 
+	beq	s1, 8, _loop_ronda_fin
+
+	la	a0, ADIVINA		
+	jal	mostrar_mensaje
+	la	a0, BUFFER			
+	jal	mostrar_mensaje
+	la	a0, AHORCADO			#AHORCADO
+	jal	mostrar_mensaje
+	la	a0, PUNTO				
+	jal	mostrar_mensaje
+	
+	
+	la	a0, PETICION_LETRA		
+	jal	mostrar_mensaje			
+	jal	getc			#Obtiene el char
+	move	s2, v0			# S2 = char
+
+	la a0, BIENVENIDA
+	jal mostrar_mensaje
+
+	beq	s2, 46, _rendicion	
+
+	la a0, BIENVENIDA
+	jal mostrar_mensaje
+	
+	#Busca el char en el string
+	move	a0, s1			
+	move	a1, s2			
+	#jal	contiene			# FALLA?
+
+	la a0, BIENVENIDA
+	jal mostrar_mensaje
+
+	li v0, 1	#PRUEBA
 	
 
-	and	v0, v0, $0			# Iterador v0 en 0
-_loop:
-	lb	t7, 0(a0)			# obtiene caracter ASCII	
-	beq	t7, zero, _loop_fin		# Si null, finaliza
+	bne	v0, 0, _char_encontrado	#v0 = 0 falso, 1 verdadero
 	
-	addi	a0, a0, 0x01			# Siguiente letra
-	addi	v0, v0, 0x01			# Iterador++
+	addi	s1, s1, 0x01			# AUMENTA ERRORES
 	
-	j	_loop			
-
-_loop_fin:	
 	
-	lw	a0, 0(sp)			#devuelvo a0 a su valor original
-	addi	sp, sp, 0x04		#dlo mismo con el stack	
-	jr	ra	
+	la	a0, NO				
+	jal	mostrar_mensaje		
+	beq	s1, 8, _rendicion	
+	
+	j	_loop_ronda			
+_char_encontrado:
+	
+	# Actualiza buffer
+	la	a0, BUFFER			
+	move	a1, s1			
+	move	a2, s2			
+	jal	actualizar_buffer			
+	
+	la	a0, BUFFER			
+	addi	a1, zero, 0x5f	# Busca si quedan letras por adivinar
+	jal	contiene			
+	beq	v0, 0, _loop_ronda_fin
+	
+	la	a0, YES			
+	jal	mostrar_mensaje	
 
-#NO HAY MAS PALABRAS JEJEJE			
- terminar_juego:
- 	_loop_fin_juego:
- 		j _loop_fin_juego
+	j	_loop_ronda			
 
+_rendicion:
+	la	a0, FORFEIT			
+	jal	mostrar_mensaje		
+	and	s1, s1, 8
+
+_loop_ronda_fin:
+	la	a0, RONDA_FIN		
+	jal	mostrar_mensaje
+	la	a0, BUFFER			
+	jal	mostrar_mensaje
+	
+	move	v0, s0			
+		
+	lw	ra, 0(sp)			# Carga return address
+	lw	a0, 4(sp)			# Carga a0
+	lw	a1, 8(sp)			# Carga a1
+	lw	s0, 12(sp)			# Carga s0
+	lw	s1, 16(sp)			# Carga s1
+	lw	s2, 20(sp)			# Carga s2
+	addi	sp, sp, 24		# 24 bytes
+	jr	ra					
+
+#Procedimiento para completar guiones segun cantidad de letras del string
+completar_guiones:
+	addi	sp, sp, -8		#8 bytes
+	sw	a0, 0(sp)			# Guardo a0
+	sw	a1, 4(sp)			# Guardo a1
+	
+	add	a0, a0, a1			# a0 = dir buffer + longitud string
+	addi	t1, zero, 95	# guion
+	sb	zero,0(a0)			# ultimo byte en null
+_completar_guiones_loop:
+	beq	a1, 0, _completar_guiones_loop_fin	
+	addi	a0, a0, -1			# decrementa buffer
+	addi	a1, a1, -1			# decrement longitud
+	sb	t1, 0(a0)				# almacena guion
+	j	_completar_guioearga a0
+	lw	a1, 4(sp)			# Carga a1
+	addi	sp, sp, 8		# 8 bytes
+	jr	ra			
+
+#Procedimiento para buscar si determinado char esta en un string
+contiene:
+	addi	sp, sp, -4		#4 bytes
+	sw	a0, 0(sp)			# Guardo a0
+	
+	and	v0, v0, 0			# falso
+	
+_contiene_loop:
+	lb	t0, 0(a0)					# Carga char del string
+	beq	t0, 0, _contiene_loop_fin	
+	beq	t0, a1, _char_hayado			# Encontrado
+	addi	a0, a0, 1				# incrementa string
+	j	_contiene_loop			
+_char_hayado:
+	addi	v0, zero, 1				# verdadero
+_contiene_loop_fin:
+	lw	a0, 0(sp)			# Carga a0
+	addi	sp, sp, 4		# 4 bytes
+	jr	ra			
+
+#Actualiza el buffer
+actualizar_buffer:
+	addi	sp, sp, -8		#8 bytes
+	sw	a0, 0(sp)			# Guardo a0
+	sw	a1, 4(sp)			# Guardo a1
+	
+_loop_actualizar:
+	lb	t0, 0(a1)						# Carga char del string
+	beq	t0, 0, _loop_actualizar_fin		
+	bne	t0, a2, _no_es_char		#NO es
+	sb	a2, 0(a0)				# Guardo char en el buffer
+_no_es_char:
+	addi	a0, a0, 1				#incrementa BUFFER
+	addi	a1, a1, 1				#incrementa string
+	j	_loop_actualizar
+
+_loop_actualizar_fin:
+	lw	a1, 4(sp)			# Carga a1
+	lw	a0, 0(sp)			# Carga a0
+	addi	sp, sp, 8		# 8 bytes
+	jr	ra				
 
